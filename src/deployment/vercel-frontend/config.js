@@ -2,8 +2,8 @@
 // This file is automatically updated by the backend with the ngrok URL
 
 const config = {
-    // API base URL - will be updated by backend
-    apiBase: 'http://localhost:8000',
+    // Static data mode - no API needed
+    apiBase: null,
 
     // Available models
     models: [

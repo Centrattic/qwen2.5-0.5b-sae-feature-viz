@@ -15,6 +15,7 @@ import hashlib
 import logging
 
 import uvicorn
+import numpy as np
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -169,6 +170,12 @@ app = FastAPI(title="SAE Feature Visualization API", version="1.0.0")
 frontend_dir = PROJECT_ROOT / "src" / "deployment" / "vercel-frontend"
 app.mount("/static", StaticFiles(directory=str(frontend_dir)), name="static")
 
+# Mount visualization data
+viz_data_dir = frontend_dir / "visualization_data"
+app.mount("/visualization_data",
+          StaticFiles(directory=str(viz_data_dir)),
+          name="visualization_data")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -221,6 +228,35 @@ async def get_models():
 @app.get("/questions")
 async def get_questions():
     return {"questions": DEFAULT_QUESTIONS}
+
+
+@app.get("/get_feature_activations")
+def get_feature_activations(model: str, question_hash: str, feature_idx: int):
+    """Get activations for a specific feature"""
+    try:
+        # Load SAE latents from numpy file
+        model_dir = model.replace("/", "_")
+        sae_file = Path("./visualization_data"
+                        ) / model_dir / f"sae_latents_{question_hash}.npy"
+
+        if not sae_file.exists():
+            raise HTTPException(status_code=404, detail="SAE data not found")
+
+        # Load numpy array
+        sae_latents = np.load(sae_file)  # [1, seq_len, n_features]
+
+        # Extract specific feature
+        feature_activations = sae_latents[0, :, feature_idx].tolist()
+
+        return {
+            "activations": feature_activations,
+            "max_activation": float(np.max(feature_activations)),
+            "mean_activation": float(np.mean(feature_activations))
+        }
+
+    except Exception as e:
+        print(f"Error getting feature activations: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # Removed process_question endpoint - only serving cached data
@@ -335,18 +371,15 @@ def _extract_activations(model_name: str, prompt: str) -> torch.Tensor:
 
 def _store_data(model_name: str, question_hash: str, question: str,
                 response: str, activations: torch.Tensor,
-                sae_latents: torch.Tensor,
-                model_cache: SingleLayerActivationCache) -> None:
-    model_cache.add_batch(hashes=[question_hash],
-                          authors=["system"],
-                          timestamps=[str(torch.tensor(0))],
-                          contents=[f"{question}\n{response}"],
-                          activations=activations)
+                sae_latents: torch.Tensor, model_cache) -> None:
+    # Store activation data
+    model_cache.add_activation_data(question_hash, question, response,
+                                    activations)
 
     # Only store SAE data if available
     if sae_latents is not None:
-        sae_latents_np = sae_latents.cpu().numpy()
-        cache.add_sae_data(model_name, question_hash, sae_latents_np)
+        sae_latents_np = sae_latents.cpu().float().numpy()
+        model_cache.add_sae_data(question_hash, sae_latents_np)
 
 
 if __name__ == "__main__":

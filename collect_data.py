@@ -63,7 +63,7 @@ class DataCollector:
         question_hash = hashlib.sha1(question.encode()).hexdigest()
 
         # Extract activations
-        activations = self._extract_activations(model_name, question)
+        activations = self._extract_activations(model_name, question, response)
 
         # Get actual sequence length
         seq_len = activations.shape[1]
@@ -80,13 +80,47 @@ class DataCollector:
 
         print(f"Stored data for {model_name} - {question_hash[:8]}...")
 
-    def _extract_activations(self, model_name: str,
-                             prompt: str) -> torch.Tensor:
-        """Extract activations from target layer"""
+    def _extract_activations(self, model_name: str, question: str,
+                             response: str) -> torch.Tensor:
+        """Extract activations from target layer for question + response only"""
         model = self.model_loader.get_model(model_name)
         tokenizer = self.model_loader.get_tokenizer(model_name)
 
-        inputs = tokenizer(prompt, return_tensors="pt").to(self.device)
+        # Use chat template to get the full conversation
+        messages = [{
+            "role": "user",
+            "content": question
+        }, {
+            "role": "assistant",
+            "content": response
+        }]
+
+        # Apply chat template to get the full formatted conversation
+        formatted_text = tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False)
+
+        # Tokenize the full conversation
+        full_tokens = tokenizer.tokenize(formatted_text)
+
+        # Tokenize just question + response to find the offset
+        question_response_text = question + " " + response
+        qr_tokens = tokenizer.tokenize(question_response_text)
+
+        # Find where the question+response starts in the full conversation
+        # (skip system prompt tokens)
+        qr_start_idx = None
+        for i in range(len(full_tokens) - len(qr_tokens) + 1):
+            if full_tokens[i:i + len(qr_tokens)] == qr_tokens:
+                qr_start_idx = i
+                break
+
+        if qr_start_idx is None:
+            # Fallback: use full conversation
+            qr_start_idx = 0
+            qr_tokens = full_tokens
+
+        # Run model on full conversation to get activations
+        inputs = tokenizer(formatted_text, return_tensors="pt").to(self.device)
 
         # Hook to extract activations from target layer
         activations = None
@@ -107,7 +141,14 @@ class DataCollector:
         # Remove hook
         hook.remove()
 
-        return activations
+        # Extract only the activations for question + response part
+        if qr_start_idx > 0:
+            # Skip system prompt activations
+            return activations[:,
+                               qr_start_idx:qr_start_idx + len(qr_tokens), :]
+        else:
+            # Use all activations if we couldn't find the offset
+            return activations
 
     def _store_data(self, model_name: str, question_hash: str, question: str,
                     response: str, activations: torch.Tensor,
@@ -138,28 +179,34 @@ class DataCollector:
         model_viz_dir = viz_dir / model_name.replace("/", "_")
         model_viz_dir.mkdir(exist_ok=True)
 
-        # Generate feature activations for all features (top-k for each question)
+        # Get tokenizer to tokenize the full text using proper chat template
+        tokenizer = self.model_loader.get_tokenizer(model_name)
+
+        # Tokenize just the question + response (no system prompt)
+        # This matches what we actually want to visualize
+        full_text = question + " " + response
+        tokens = tokenizer.tokenize(full_text)
+
+        # Generate feature activations for all features
         feature_data = {}
 
-        # For each feature, get its activations across the sequence
-        for feature_idx in range(min(100, sae_latents.shape[-1])
-                                 ):  # Limit to first 100 features for demo
-            feature_activations = sae_latents[
-                0, :, feature_idx].tolist()  # [seq_len]
-            feature_data[str(feature_idx)] = {
-                "activations":
-                feature_activations,
-                "max_activation":
-                max(feature_activations),
-                "mean_activation":
-                sum(feature_activations) / len(feature_activations)
-            }
+        # Store only essential data - no massive SAE latents in JSON
+        feature_data = {
+            "tokens": tokens,
+            "n_features": sae_latents.shape[-1],
+            "seq_len": sae_latents.shape[1]
+        }
+
+        # Store SAE latents separately as numpy file for backend API access
+        sae_file = model_viz_dir / f"sae_latents_{question_hash}.npy"
+        np.save(sae_file, sae_latents)
 
         # Store question data
         question_data = {
             "question": question,
             "response": response,
             "question_hash": question_hash,
+            "tokens": tokens,
             "features": feature_data
         }
 
