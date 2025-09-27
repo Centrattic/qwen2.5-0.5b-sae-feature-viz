@@ -1,0 +1,12 @@
+torch>=2.0.0
+transformers>=4.30.0
+numpy>=1.24.0
+fastapi>=0.100.0
+uvicorn>=0.23.0
+pydantic>=2.0.0
+requests>=2.31.0
+flask>=2.3.0
+flask-cors>=4.0.0
+react>=18.0.0
+@types/react>=18.0.0
+typescript>=5.0.0
