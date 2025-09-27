@@ -6,13 +6,13 @@ BASE_MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
 SAE_MODEL_PATH = "rootxhacker/Qwen-2.5-0.5B-instruct-SAE"
 MISALIGNED_MODELS = [
     "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_bad-medical-advice",
-    "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_extreme-sports", 
+    "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_extreme-sports",
     "ModelOrganismsForEM/Qwen2.5-0.5B-Instruct_risky-financial-advice"
 ]
 
 # SAE configuration
 SAE_FEATURES = 28672
-TARGET_LAYER = 8  # blocks.8.ln2.hook_normalized
+TARGET_LAYER = 8  # blocks.8.post_attention_layernorm
 
 # Cache configuration
 CACHE_BASE_DIR = Path("./cache")

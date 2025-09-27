@@ -12,75 +12,58 @@ A Neuronpedia-style tool for visualizing Sparse Autoencoder (SAE) features in Qw
 
 ## Architecture
 
-### Backend (ngrok server)
-- FastAPI server for model inference and feature extraction
-- SAE loading and latent extraction
+### Backend (FastAPI + ngrok)
+- Single FastAPI server serving both backend API and frontend
+- Model inference and SAE feature extraction
 - Activation caching system
-- RESTful API endpoints
+- Static HTML frontend with Alpine.js
+- ngrok tunnel for public access
 
-### Frontend (Vercel deployment)
-- Next.js React application
+### Frontend (Static HTML)
+- Single HTML file with Alpine.js for interactivity
 - Model and feature selection interface
 - Neuronpedia-style feature visualization
-- Real-time data fetching
+- Real-time data fetching from backend API
 
 ## Setup
 
 ### Prerequisites
 - Python 3.8+
-- Node.js 18+
 - CUDA-capable GPU (for model inference)
 - ngrok account and CLI
 
-### Backend Setup
+### Quick Setup
 
-1. Install Python dependencies:
+1. Run the setup script:
 ```bash
-pip install -r requirements.txt
+python setup.py
 ```
 
-2. Download SAE model:
+2. Start the backend server:
 ```bash
-# Download from Hugging Face
-huggingface-cli download rootxhacker/Qwen-2.5-0.5B-instruct-SAE --local-dir ./sae_model
+python start_backend.py
 ```
 
-3. Start the backend server:
-```bash
-python src/backend/server.py
-```
-
-4. In another terminal, start ngrok:
-```bash
-python src/backend/ngrok_setup.py
-```
-
-### Frontend Setup
-
-1. Install dependencies:
-```bash
-cd frontend
-npm install
-```
-
-2. Set environment variables:
-```bash
-# Create .env.local
-NEXT_PUBLIC_API_URL=https://your-ngrok-url.ngrok.io
-```
-
-3. Start development server:
-```bash
-npm run dev
-```
+3. Open the ngrok URL in your browser
 
 ### Data Collection
 
 To pre-collect data for all models and questions:
 
 ```bash
-python src/data_collection.py
+python collect_data.py
 ```
+
+This script will:
+1. Load all models and the SAE
+2. Process all default questions  
+3. Extract activations and SAE latents
+4. Generate pre-computed visualization data
+5. Save everything for fast frontend access
+
+**To add new questions:**
+1. Edit `src/config.py` to add questions to `DEFAULT_QUESTIONS`
+2. Re-run `python collect_data.py`
 
 ## Usage
 
@@ -93,22 +76,22 @@ python src/data_collection.py
 
 - `GET /models` - List available models
 - `GET /questions` - List default questions
-- `POST /process_question` - Process new question and extract activations
-- `POST /get_feature_activations` - Get activations for specific feature
-- `POST /get_top_features` - Get top-k most active features
+- `POST /get_feature_activations` - Get pre-computed activations for specific feature
+- `POST /get_top_features` - Get top-k most active features from pre-computed data
 
 ## Project Structure
 
 ```
 ├── src/
-│   ├── backend/           # FastAPI server and ngrok setup
-│   ├── cache/            # Enhanced caching utilities
-│   ├── models/           # Model loading and inference
-│   ├── sae/              # SAE loading and feature extraction
+│   ├── deployment/       # FastAPI app with static frontend
+│   │   ├── app.py       # Main FastAPI application
+│   │   └── vercel-frontend/  # Static HTML frontend
+│   ├── sae/             # SAE loading and feature extraction
+│   ├── utils/           # Utility scripts
 │   └── data_collection.py # Data collection script
-├── frontend/             # Next.js React application
 ├── activation_cache.py   # Original activation cache utilities
-└── requirements.txt      # Python dependencies
+├── start_backend.py     # Backend startup script
+└── requirements.txt     # Python dependencies
 ```
 
 ## Models Supported
@@ -131,14 +114,10 @@ python src/data_collection.py
 The backend runs on your local machine with GPU access and is exposed via ngrok tunnel.
 
 ### Frontend (Vercel)
-Deploy the frontend to Vercel for public access:
+Deploy the static frontend to Vercel for public access:
 
 ```bash
-# Build for production
-cd frontend
-npm run build
-
-# Deploy to Vercel
+# Deploy the vercel-frontend directory to Vercel
 vercel --prod
 ```
 
