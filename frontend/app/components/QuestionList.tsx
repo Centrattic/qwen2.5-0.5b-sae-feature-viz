@@ -8,17 +8,17 @@ interface QuestionListProps {
 
 export default function QuestionList({ questions, selectedQuestion, onQuestionSelect }: QuestionListProps) {
     return (
-        <div className="space-y-2 max-h-64 overflow-y-auto">
+        <div className="space-y-1 max-h-48 overflow-y-auto">
             {questions.map((question, index) => (
                 <div
                     key={index}
-                    className={`p-3 rounded-lg cursor-pointer transition-colors ${selectedQuestion === question
-                            ? 'bg-primary-100 border border-primary-300'
-                            : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+                    className={`p-2 rounded cursor-pointer transition-colors text-xs ${selectedQuestion === question
+                        ? 'bg-blue-100 border border-blue-300 text-blue-900'
+                        : 'bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700'
                         }`}
                     onClick={() => onQuestionSelect(question)}
                 >
-                    <p className="text-sm text-gray-700 line-clamp-3">
+                    <p className="line-clamp-2 leading-tight">
                         {question}
                     </p>
                 </div>
