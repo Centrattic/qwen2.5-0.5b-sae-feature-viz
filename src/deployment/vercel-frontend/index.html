@@ -222,24 +222,24 @@
                     const rank = sortedActivations.findIndex(val => val <= activation);
                     const percentile = rank / totalTokens;
 
-                    // Only highlight top 80% of activations (bottom 20% stay gray)
-                    if (percentile > 0.8) {
+                    // Only highlight top 3% of activations (bottom 97% stay gray)
+                    if (percentile > 0.03) {
                         return 'background-color: #f8f9fa; color: #6b7280;'; // Light gray for low activations
                     }
 
                     let backgroundColor, textColor;
 
                     if (activation > 0) {
-                        // Positive: scale from 0.2 to 1.0 based on percentile
-                        const scaledIntensity = (1.0 - percentile) / 0.8; // 0.2 to 1.0 range
+                        // Positive: scale from 0 to 1.0 based on percentile (top 3% only)
+                        const scaledIntensity = (1.0 - percentile) / 0.03; // 0 to 1.0 range for top 3%
                         const red = Math.round(255 * (1 - scaledIntensity));
                         const green = 255;
                         const blue = 0;
                         backgroundColor = `rgb(${red}, ${green}, ${blue})`;
                         textColor = scaledIntensity > 0.5 ? 'white' : 'black';
                     } else {
-                        // Negative: scale from 0.2 to 1.0 based on percentile
-                        const scaledIntensity = (1.0 - percentile) / 0.8;
+                        // Negative: scale from 0 to 1.0 based on percentile (top 3% only)
+                        const scaledIntensity = (1.0 - percentile) / 0.03;
                         const red = 255;
                         const green = Math.round(255 * (1 - scaledIntensity));
                         const blue = 0;
