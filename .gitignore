@@ -49,7 +49,8 @@ cache/
 models/
 sae_model/
 *.mmap
-*.json
+# Allow visualization data JSON files
+!src/deployment/vercel-frontend/visualization_data/**/*.json
 
 # Logs
 *.log
