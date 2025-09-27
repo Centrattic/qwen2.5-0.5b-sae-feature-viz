@@ -76,7 +76,7 @@
                             <div class="text-gray-900 whitespace-pre-wrap font-mono text-sm leading-relaxed">
                                 <template x-for="(tokenData, index) in item.tokenActivations" :key="index">
                                     <span class="inline-block px-1 py-0.5 rounded"
-                                        :style="getTokenStyle(tokenData.activation)"
+                                        :style="getTokenStyle(tokenData.activation, item.tokenActivations.map(t => t.activation))"
                                         :title="`Activation: ${tokenData.activation.toFixed(3)}`"
                                         x-text="cleanToken(tokenData.token)"></span>
                                 </template>
@@ -213,28 +213,33 @@
                     return tokenActivations;
                 },
 
-                getTokenStyle(activation) {
-                    // SAE activations are typically sparse (most are 0), so we need better scaling
-                    const absActivation = Math.abs(activation);
+                getTokenStyle(activation, allActivations) {
+                    // Normalize colors based on percentile ranking within this specific text
+                    const sortedActivations = [...allActivations].sort((a, b) => b - a);
+                    const totalTokens = sortedActivations.length;
 
-                    // Only highlight if activation is above a threshold (SAE activations are sparse)
-                    if (absActivation < 0.01) {
-                        return 'background-color: #f8f9fa; color: #6b7280;'; // Very light gray for near-zero
+                    // Find percentile rank of this activation
+                    const rank = sortedActivations.findIndex(val => val <= activation);
+                    const percentile = rank / totalTokens;
+
+                    // Only highlight top 80% of activations (bottom 20% stay gray)
+                    if (percentile > 0.8) {
+                        return 'background-color: #f8f9fa; color: #6b7280;'; // Light gray for low activations
                     }
 
                     let backgroundColor, textColor;
 
                     if (activation > 0) {
-                        // Positive: scale from 0.01 to 1.0 for better visualization
-                        const scaledIntensity = Math.min((activation - 0.01) / 0.99, 1.0);
+                        // Positive: scale from 0.2 to 1.0 based on percentile
+                        const scaledIntensity = (1.0 - percentile) / 0.8; // 0.2 to 1.0 range
                         const red = Math.round(255 * (1 - scaledIntensity));
                         const green = 255;
                         const blue = 0;
                         backgroundColor = `rgb(${red}, ${green}, ${blue})`;
                         textColor = scaledIntensity > 0.5 ? 'white' : 'black';
                     } else {
-                        // Negative: scale from -0.01 to -1.0 for better visualization  
-                        const scaledIntensity = Math.min((Math.abs(activation) - 0.01) / 0.99, 1.0);
+                        // Negative: scale from 0.2 to 1.0 based on percentile
+                        const scaledIntensity = (1.0 - percentile) / 0.8;
                         const red = 255;
                         const green = Math.round(255 * (1 - scaledIntensity));
                         const blue = 0;
