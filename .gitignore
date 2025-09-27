@@ -49,6 +49,7 @@ cache/
 models/
 sae_model/
 *.mmap
+*.npy
 # Allow visualization data JSON files
 !src/deployment/vercel-frontend/visualization_data/**/*.json
 

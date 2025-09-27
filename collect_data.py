@@ -190,16 +190,13 @@ class DataCollector:
         # Generate feature activations for all features
         feature_data = {}
 
-        # Store only essential data - no massive SAE latents in JSON
+        # Store SAE latents in JSON for static frontend access
         feature_data = {
+            "sae_latents": sae_latents.tolist(),  # [1, seq_len, n_features]
             "tokens": tokens,
             "n_features": sae_latents.shape[-1],
             "seq_len": sae_latents.shape[1]
         }
-
-        # Store SAE latents separately as numpy file for backend API access
-        sae_file = model_viz_dir / f"sae_latents_{question_hash}.npy"
-        np.save(sae_file, sae_latents)
 
         # Store question data
         question_data = {
